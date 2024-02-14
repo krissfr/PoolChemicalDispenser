@@ -1,0 +1,439 @@
+esphome:
+  name: poolchemicaldispenser
+  friendly_name: PoolChemicalDispenser
+  includes: 
+    - dlc32hc595spi.h
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: "put_your_key_here"
+
+ota:
+  password: "put_your_password_here"
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Poolchemicaldispenser"
+    password: "put_a_password"
+
+captive_portal:
+
+   
+# Web Server: https://esphome.io/components/web_server.html
+web_server:
+  local: true
+  port: 80    
+
+# Global variables
+globals:
+  - id: Xstep   # variable used to store the number of step for the motor plugged in X ( Active Oxygen pump)
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: Ystep  # variable used to store the number of step for the motor plugged in Y ( PH+ pump)
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: Zstep  # variable used to store the number of step for the motor plugged in Z ( PH- pump)
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: calibration_step   # number of steps used for the calibration
+    type: int
+    restore_value: no
+    initial_value: '10000'
+
+# numbers
+number:
+  - platform: template
+    name: "Active Oxygen quantity (ml)"   # Quantity of Active Oxygen to distribute
+    id: number_quantity_oa
+    optimistic: true
+    min_value: 1
+    max_value: 10
+    initial_value: 5
+    step: 1
+    mode: slider
+  - platform: template
+    id: number_step_oa   # Active Oxygen quantity (ml) for all calibration steps (id(calibration_step))
+    optimistic: true
+    internal: True
+    min_value: 10
+    max_value: 100
+    initial_value: 50
+    step: 1
+    mode: slider
+  - platform: template
+    name: "PH+ quantity (ml)"   # Quantity of PH+ to distribute
+    id: number_quantity_php
+    optimistic: true
+    min_value: 1
+    max_value: 10
+    initial_value: 5
+    step: 1
+    mode: slider
+  - platform: template
+    id: number_step_php   # PH+ quantity (ml) for all calibration steps (id(calibration_step))
+    optimistic: true
+    internal: True
+    min_value: 10
+    max_value: 100
+    initial_value: 50
+    step: 1
+    mode: slider
+  - platform: template
+    name: "PH- quantity (ml)"   # Quantity of PH+ to distribute
+    id: number_quantity_phm
+    optimistic: true
+    min_value: 1
+    max_value: 10
+    initial_value: 5
+    step: 1
+    mode: slider
+  - platform: template
+    id: number_step_phm   # PH- quantity (ml) for all calibration steps (id(calibration_step))
+    internal: True
+    optimistic: true
+    min_value: 10
+    max_value: 100
+    initial_value: 50
+    step: 1
+    mode: slider
+  - platform: template
+    name: "time between step (ms)"  # time between step, so the time between each byte send to the shift register
+    id: step_interval
+    optimistic: true
+    min_value: 1
+    max_value: 3
+    initial_value: 1
+    step: 1
+    mode: slider
+
+# Switchs
+switch:
+  - platform: template
+    name: "Active Oxygen dosing pump"
+    id: pompe_oa_switch
+    optimistic: true
+    turn_on_action:
+            - logger.log:
+                format: "Setting Active Oxygen stepper position to %f"
+                args: [ 'id(number_quantity_oa).state*id(calibration_step)/id(number_step_oa).state' ]
+            - lambda: |-
+                id(Xstep) = id(number_quantity_oa).state*id(calibration_step)/id(number_step_oa).state;
+            - wait_until:
+                lambda: 'return ( Xstep->value() == 0 );'
+            - switch.turn_off: pompe_oa_switch
+    turn_off_action:
+            - logger.log: "Setting Active Oxygen stepper to stop state before the end of steps"
+            - lambda: |-
+                id(Xstep) = 0;
+  - platform: template
+    name: "PH+ dosing pump"
+    id: pompe_php_switch
+    optimistic: true
+    turn_on_action:
+            - logger.log:
+                format: "Setting PH+ stepper position to %f"
+                args: [ 'id(number_quantity_php).state*id(calibration_step)/id(number_step_php).state' ]
+            - lambda: |-
+                id(Ystep) = id(number_quantity_php).state*id(calibration_step)/id(number_step_php).state;
+            - wait_until:
+                lambda: 'return ( Ystep->value() == 0 );'
+            - switch.turn_off: pompe_php_switch
+    turn_off_action:
+            - logger.log: "Setting PH+ stepper to stop state before the end of steps"
+            - lambda: |-
+                id(Ystep) = 0;
+  - platform: template
+    name: "PH- dosing pump"
+    id: pompe_phm_switch
+    optimistic: true
+    turn_on_action:
+            - logger.log:
+                format: "Setting PH- stepper position to %f"
+                args: [ 'id(number_quantity_phm).state*id(calibration_step)/id(number_step_phm).state' ]
+            - lambda: |-
+                id(Zstep) = id(number_quantity_phm).state*id(calibration_step)/id(number_step_phm).state;
+            - wait_until:
+                lambda: 'return ( Zstep->value() == 0 );'
+            - switch.turn_off: pompe_phm_switch
+    turn_off_action:
+            - logger.log: "Setting PH- stepper to stop state before the end of steps"
+            - lambda: |-
+                id(Zstep) = 0;
+  - platform: restart
+    id: reboot_sw
+    name: Restart Controleur
+
+
+# Custom component (the shift register of the MKS DLC32 board)
+custom_component:
+- lambda: |-
+    auto dlc32_board = new DLC32HC595();
+    return {dlc32_board};
+  components:
+  - id: dlc32_board_id
+
+spi:
+  - id: spi_bus0  # SPI bus for the shift register
+    clk_pin: GPIO16
+    mosi_pin: GPIO21
+    interface: hardware
+  - id: spi_bus1  # SPI bus for the SSD1309 oled display
+    clk_pin: GPIO33
+    mosi_pin: GPIO25
+    interface: any
+
+spi_device:
+    id: spidev # SPI device wich is the shift register of the MKS DLC32 board
+    cs_pin: GPIO17
+    spi_id: spi_bus0
+    data_rate: 10MHz
+    mode: 3
+    bit_order: msb_first
+
+# Screen: SSD1309, SPI version
+display:
+  - platform: ssd1306_spi
+    spi_id: spi_bus1
+    model: "SSD1306 128x64"
+    cs_pin: GPIO26
+    dc_pin: GPIO27
+    reset_pin:
+      number: GPIO5
+      inverted: true
+    id: my_ssd1306
+    update_interval: 2s
+    pages:
+    - id: start_page
+      lambda: |-
+        it.print(0, 3, id(my_title), "Pool");
+        it.print(0, 23, id(my_title), "Chemical");
+        it.print(0, 43, id(my_title), "Dispenser");
+        it.image(80, 10, id(pool_icon));
+
+# Font police
+font:
+  - file: "gfonts://Roboto"
+    id: my_title
+    size: 18
+  - file: "gfonts://Roboto"
+    id: my_font
+    size: 12
+
+# Menu display
+graphical_display_menu:
+  id: my_graphical_display_menu
+  display: my_ssd1306
+  font: my_font
+  on_redraw:
+    then:
+      component.update: my_ssd1306
+  active: false
+  mode: rotary
+  items:
+    - type: menu
+      text: 'Active Oxygen'
+      items:
+        - type: switch
+          immediate_edit: true
+          text: 'Active Oxy- Pump'
+          on_text: 'ON'
+          off_text: 'OFF'
+          switch: pompe_oa_switch
+        - type: number
+          text: 'Volume (ml)'
+          format: '%g'
+          number: number_quantity_oa
+        - type: menu
+          text: 'Calibration'
+          items:
+            - type: command
+              text: 'run calibration'
+              on_value:
+                then:
+                  - script.execute: calibration_oa
+            - type: number
+              text: 'Qty obtained (ml)'
+              format: '%g'
+              number: number_step_oa
+            - type: back
+              text: 'Back'
+        - type: back
+          text: 'Back'
+    - type: menu
+      text: 'PH+'
+      items:
+        - type: switch
+          immediate_edit: true
+          text: 'PH+ Pump'
+          on_text: 'ON'
+          off_text: 'OFF'
+          switch: pompe_php_switch
+        - type: number
+          text: 'Volume (ml)'
+          format: '%g'
+          number: number_quantity_php
+        - type: menu
+          text: 'Calibration'
+          items:
+            - type: command
+              text: 'run calibration'
+              on_value:
+                then:
+                  - script.execute: calibration_php
+            - type: number
+              text: 'Qty obtained (ml)'
+              format: '%g'
+              number: number_step_php
+            - type: back
+              text: 'Back'
+        - type: back
+          text: 'Back'
+    - type: menu
+      text: 'PH-'
+      items:
+        - type: switch
+          immediate_edit: true
+          text: 'PH- Pump'
+          on_text: 'ON'
+          off_text: 'OFF'
+          switch: pompe_phm_switch
+        - type: number
+          text: 'Volume (ml)'
+          format: '%g'
+          number: number_quantity_phm
+        - type: menu
+          text: 'Calibration'
+          items:
+            - type: command
+              text: 'run calibration'
+              on_value:
+                then:
+                  - script.execute: calibration_phm
+            - type: number
+              text: 'Qty obtained (ml)'
+              format: '%g'
+              number: number_step_phm
+            - type: back
+              text: 'Back'
+        - type: back
+          text: 'Back'
+    - type: menu
+      text: 'System'
+      items:
+        - type: label
+          text: !lambda |-
+            return {WiFi.localIP().toString().c_str()};
+        - type: switch
+          immediate_edit: true
+          off_text: 'Clic to reboot'
+          text: 'Reboot'
+          switch: reboot_sw
+        - type: back
+          text: 'Back'
+
+# Rotary encoder to provide navigation
+sensor:
+  - platform: rotary_encoder
+    name: "Rotary Encoder"
+    internal: True
+    pin_a: #CLK
+      number: GPIO19
+      mode:
+        input: true
+        pullup: true
+    pin_b: #DT
+      number: GPIO18
+      mode:
+        input: true
+        pullup: true
+    filters:
+      debounce: 30ms
+    on_anticlockwise:
+      - display_menu.up: my_graphical_display_menu
+    on_clockwise:
+      - display_menu.down: my_graphical_display_menu
+
+
+# A de-bounced GPIO is used to 'click' (switch of the rotary encoder)
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO23
+      mode:
+        input: true
+        pullup: true
+    name: enter
+    internal: True
+    filters:
+      - delayed_on: 30ms
+      - delayed_off: 30ms
+    on_press:
+      - if:
+          condition:
+            display_menu.is_active: my_graphical_display_menu
+          then:
+            - display_menu.enter: my_graphical_display_menu
+          else:
+            - display_menu.show:  my_graphical_display_menu
+      - script.execute: splashscreen_timer
+
+#screen saver
+script:
+  - id: splashscreen_timer   # back to home screen if the button is not press since 2min
+    mode: restart     # Restart the countdown if called multiple times
+    then:
+      - delay: 2 min
+      - display_menu.show_main: my_graphical_display_menu
+      - display_menu.hide: my_graphical_display_menu
+      - display.page.show: start_page
+  - id: calibration_oa
+    then:
+      - logger.log:
+          format: "Run calibration for Active Oxygen stepper, send %d steps."
+          args: [ 'id(calibration_step)' ]
+      - lambda: |-
+           id(Xstep) = id(calibration_step);
+      - wait_until:
+          lambda: 'return ( Xstep->value() == 0 );'
+  - id: calibration_php
+    then:
+      - logger.log:
+          format: "Run calibration for PH+ stepper, send %d steps."
+          args: [ 'id(calibration_step)' ]
+      - lambda: |-
+           id(Ystep) = id(calibration_step);
+      - wait_until:
+          lambda: 'return ( Ystep->value() == 0 );'
+  - id: calibration_phm
+    then:
+      - logger.log:
+          format: "Run calibration for PH- stepper, send %d steps."
+          args: [ 'id(calibration_step)' ]
+      - lambda: |-
+           id(Zstep) = id(calibration_step);
+      - wait_until:
+          lambda: 'return ( Zstep->value() == 0 );'
+
+
+# icon
+image:
+  - file: mdi:pool
+    id: pool_icon
+    resize: 50x50
