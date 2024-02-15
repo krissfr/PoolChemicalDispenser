@@ -6,6 +6,7 @@ a pool chemical dispenser with esphome and MKS DLC32 board
 For this projet, you need :
 - a MKS DLC32 board
 - 3 stepper drivers (i use a4988)
+- 3 pumps with stepper motor
 - 1 128x64 SSD1309 SPI Oled display
 - 1 rotary encoder with switch
 
