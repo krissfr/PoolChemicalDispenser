@@ -17,5 +17,5 @@ For a unkown reason, i have to add a small diode (i use 1n4148) to lower a bit t
 
 
 ## roadmap :
-- a sensor for the main circulation pump (to inject chemical product only when filtration is ON). We can use the X input plug of the DLC32 wich is an analog input. i will probably use a clamp current sensor.
-- 3 sensors to detect when the chemical product cans are low (1 for each). We can use Probe input, Z input and Y input plugs of the DLC32 board. i will probably use contact less liquid sensors.
+- a sensor for the main circulation pump (to inject chemical product only when filtration is ON). We can use the i2c interface plug of the DLC32 with a ADS1115 and a SCT013 clamp.
+- 3 sensors to detect when the chemical product cans are low (1 for each). We can use X input, Y input and Z input plugs of the DLC32 board. i will probably use contact less liquid sensors.
