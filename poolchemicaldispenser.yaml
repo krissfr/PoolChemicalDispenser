@@ -1,8 +1,16 @@
-esphome:
+substitutions:
   name: poolchemicaldispenser
+  author: krissfr
+  version: 1.0.0
+
+esphome:
+  name: $name
   friendly_name: PoolChemicalDispenser
   includes: 
     - dlc32hc595spi.h
+  project:
+    name: "$author.$name"
+    version: "$version"
 
 esp32:
   board: esp32dev
@@ -16,10 +24,10 @@ logger:
 # Enable Home Assistant API
 api:
   encryption:
-    key: "put_your_key_here"
+    key: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 ota:
-  password: "put_your_password_here"
+  password: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 wifi:
   ssid: !secret wifi_ssid
@@ -28,7 +36,7 @@ wifi:
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: "Poolchemicaldispenser"
-    password: "put_a_password"
+    password: "xxxxxxxxxx"
 
 captive_portal:
 
@@ -114,7 +122,7 @@ number:
     step: 1
     mode: slider
   - platform: template
-    name: "time between step (ms)"  # time between step, so the time between each byte send to the shift register
+    name: "Motor Speed: time between step (ms)"  # time between step, so the time between each byte send to the shift register
     id: step_interval
     optimistic: true
     min_value: 1
@@ -130,6 +138,18 @@ switch:
     id: pompe_oa_switch
     optimistic: true
     turn_on_action:
+      - if:
+          condition:
+            binary_sensor.is_off: MainPump
+          then:
+            - logger.log:
+               format: "WARNING : You can't use dosing pumps when the main pool pump is OFF (except for calibration)"
+               level: WARN
+            - display_menu.hide: my_graphical_display_menu
+            - display.page.show: warning_page
+            - delay: 3500ms
+            - display_menu.show: my_graphical_display_menu
+          else:
             - logger.log:
                 format: "Setting Active Oxygen stepper position to %f"
                 args: [ 'id(number_quantity_oa).state*id(calibration_step)/id(number_step_oa).state' ]
@@ -137,7 +157,7 @@ switch:
                 id(Xstep) = id(number_quantity_oa).state*id(calibration_step)/id(number_step_oa).state;
             - wait_until:
                 lambda: 'return ( Xstep->value() == 0 );'
-            - switch.turn_off: pompe_oa_switch
+      - switch.turn_off: pompe_oa_switch
     turn_off_action:
             - logger.log: "Setting Active Oxygen stepper to stop state before the end of steps"
             - lambda: |-
@@ -147,6 +167,18 @@ switch:
     id: pompe_php_switch
     optimistic: true
     turn_on_action:
+      - if:
+          condition:
+            binary_sensor.is_off: MainPump
+          then:
+            - logger.log:
+               format: "WARNING : You can't use dosing pumps when the main pool pump is OFF (except for calibration)"
+               level: WARN
+            - display_menu.hide: my_graphical_display_menu
+            - display.page.show: warning_page
+            - delay: 3500ms
+            - display_menu.show: my_graphical_display_menu
+          else:
             - logger.log:
                 format: "Setting PH+ stepper position to %f"
                 args: [ 'id(number_quantity_php).state*id(calibration_step)/id(number_step_php).state' ]
@@ -154,7 +186,7 @@ switch:
                 id(Ystep) = id(number_quantity_php).state*id(calibration_step)/id(number_step_php).state;
             - wait_until:
                 lambda: 'return ( Ystep->value() == 0 );'
-            - switch.turn_off: pompe_php_switch
+      - switch.turn_off: pompe_php_switch
     turn_off_action:
             - logger.log: "Setting PH+ stepper to stop state before the end of steps"
             - lambda: |-
@@ -164,6 +196,18 @@ switch:
     id: pompe_phm_switch
     optimistic: true
     turn_on_action:
+      - if:
+          condition:
+            binary_sensor.is_off: MainPump
+          then:
+            - logger.log:
+               format: "WARNING : You can't use dosing pumps when the main pool pump is OFF (except for calibration)"
+               level: WARN
+            - display_menu.hide: my_graphical_display_menu
+            - display.page.show: warning_page
+            - delay: 3500ms
+            - display_menu.show: my_graphical_display_menu
+          else:
             - logger.log:
                 format: "Setting PH- stepper position to %f"
                 args: [ 'id(number_quantity_phm).state*id(calibration_step)/id(number_step_phm).state' ]
@@ -171,7 +215,7 @@ switch:
                 id(Zstep) = id(number_quantity_phm).state*id(calibration_step)/id(number_step_phm).state;
             - wait_until:
                 lambda: 'return ( Zstep->value() == 0 );'
-            - switch.turn_off: pompe_phm_switch
+      - switch.turn_off: pompe_phm_switch
     turn_off_action:
             - logger.log: "Setting PH- stepper to stop state before the end of steps"
             - lambda: |-
@@ -226,13 +270,20 @@ display:
         it.print(0, 23, id(my_title), "Chemical");
         it.print(0, 43, id(my_title), "Dispenser");
         it.image(80, 10, id(pool_icon));
+    - id: warning_page
+      lambda: |-
+        it.print(20, 1, id(my_title), "WARNING");
+        it.print(5, 22, id(my_font), "the main pool pump");
+        it.print(35, 35, id(my_font), " is OFF !");
+        it.print(0, 50, id(my_font), "distribution is cancelled");
+
 
 # Font police
 font:
   - file: "gfonts://Roboto"
     id: my_title
     size: 18
-  - file: "gfonts://Roboto"
+  - file: "gfonts://Inria+Sans" #"gfonts://Mukta"
     id: my_font
     size: 12
 
@@ -274,6 +325,9 @@ graphical_display_menu:
               number: number_step_oa
             - type: back
               text: 'Back'
+        - type: label
+          text: !lambda |- 
+            return id(AOlevel).state ? "Tank level : normal" : "Tank level : LOW";
         - type: back
           text: 'Back'
     - type: menu
@@ -303,6 +357,9 @@ graphical_display_menu:
               number: number_step_php
             - type: back
               text: 'Back'
+        - type: label
+          text: !lambda |- 
+            return id(PHPlevel).state ? "Tank level : normal" : "Tank level : LOW";
         - type: back
           text: 'Back'
     - type: menu
@@ -332,6 +389,23 @@ graphical_display_menu:
               number: number_step_phm
             - type: back
               text: 'Back'
+        - type: label
+          text: !lambda |- 
+            return id(PHMlevel).state ? "Tank level : normal" : "Tank level : LOW";
+        - type: back
+          text: 'Back'
+    - type: menu
+      text: 'Main pool pump'
+      items:
+        - type: label
+          text: !lambda |-
+            return ("Main pump: " + String(id(MainPump).state ? "ON":"OFF")).c_str() ;
+        - type: label
+          text: !lambda |-
+            return ("Power usage: " + String(id(power_channel_a).state) + " W").c_str() ;
+        - type: label
+          text: !lambda |-
+            return ("Energy (today): " + String(id(power_channel_a).state) + " kWh").c_str() ;
         - type: back
           text: 'Back'
     - type: menu
@@ -339,7 +413,17 @@ graphical_display_menu:
       items:
         - type: label
           text: !lambda |-
-            return {WiFi.localIP().toString().c_str()};
+            return (to_string("${name}")).c_str();
+        - type: label
+          text: !lambda |-
+            return ("version: " + to_string("${version}")).c_str();
+        - type: label
+          text: !lambda |-
+            return ("IP: " + WiFi.localIP().toString()).c_str();
+        - type: number
+          text: 'Dosing pump speed'
+          format: '%g'
+          number: step_interval
         - type: switch
           immediate_edit: true
           off_text: 'Clic to reboot'
@@ -347,6 +431,16 @@ graphical_display_menu:
           switch: reboot_sw
         - type: back
           text: 'Back'
+
+#I2C
+i2c:
+  sda: GPIO0
+  scl: GPIO4
+
+# Current sensors (current clamps)
+ads1115:
+  - address: 0x48
+    id: ads1
 
 # Rotary encoder to provide navigation
 sensor:
@@ -369,7 +463,45 @@ sensor:
       - display_menu.up: my_graphical_display_menu
     on_clockwise:
       - display_menu.down: my_graphical_display_menu
+  # sensors source
+  - platform: ads1115
+    ads1115_id: ads1
+    multiplexer: 'A0_A1'
+    gain: 1.024
+    name: "Channel A"
+    force_update: true
+    id: Channel_A
+    internal: true
+  - platform: ct_clamp
+    sensor: Channel_A
+    name: "Measured Current Channel A"
+    update_interval: 5s
+#    sample_duration: 1s
+    accuracy_decimals: 2
+    filters:
+      - calibrate_linear:
+          - 0 -> 0
+          - 1 -> 30   
+    id: current_channel_A
+  - platform: template
+    name: power channel a
+    id: power_channel_a
+    unit_of_measurement: W
+    lambda: return id(current_channel_A).state ;
+    filters:
+      - multiply: 235
+  - platform: total_daily_energy
+    name: energy_channel_a
+    power_id: power_channel_a
+    unit_of_measurement: kWh
+    device_class: energy    
+    filters:
+      - multiply: .001
 
+# Enable time component to reset energy at midnight
+time:
+  - platform: homeassistant
+    id: homeassistant_time
 
 # A de-bounced GPIO is used to 'click' (switch of the rotary encoder)
 binary_sensor:
@@ -393,6 +525,49 @@ binary_sensor:
           else:
             - display_menu.show:  my_graphical_display_menu
       - script.execute: splashscreen_timer
+  - platform: gpio
+    pin:
+      number: GPIO36
+      mode:
+        input: true
+        pullup: false #already pulled-up on the board
+    name: "Active Oxygen low level in tank"
+    id: AOlevel
+    filters:
+      - delayed_on: 30ms
+      - delayed_off: 30ms
+  - platform: gpio
+    pin:
+      number: GPIO35
+      mode:
+        input: true
+        pullup: false #already pulled-up on the board
+    name: "PH+ low level in tank"
+    id: PHPlevel
+    filters:
+      - delayed_on: 30ms
+      - delayed_off: 30ms
+  - platform: gpio
+    pin:
+      number: GPIO34
+      mode:
+        input: true
+        pullup: false #already pulled-up on the board
+    name: "PH- low level in tank"
+    id: PHMlevel
+    filters:
+      - delayed_on: 30ms
+      - delayed_off: 30ms
+  - platform: template
+    name: "Main Pump status" # status of the main pump based on the current used by the pump
+    id: MainPump
+    lambda: |-
+      if (id(current_channel_A).state >= 1) {
+        return true;
+      } else {
+        return false;
+      }
+
 
 #screen saver
 script:
