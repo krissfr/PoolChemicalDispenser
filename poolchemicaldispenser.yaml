@@ -64,6 +64,11 @@ globals:
     type: int
     restore_value: no
     initial_value: '10000'
+  - id: minimal_power_used_by_main_pump   # minimal power used by main pump (W)
+    type: int
+    restore_value: no
+    initial_value: '10'
+
 
 # numbers
 number:
@@ -405,7 +410,7 @@ graphical_display_menu:
             return ("Power usage: " + String(id(power_channel_a).state) + " W").c_str() ;
         - type: label
           text: !lambda |-
-            return ("Energy (today): " + String(id(power_channel_a).state) + " kWh").c_str() ;
+            return ("Energy (today): " + String(id(energy_channel_a).state) + " kWh").c_str() ;
         - type: back
           text: 'Back'
     - type: menu
@@ -481,7 +486,7 @@ sensor:
     filters:
       - calibrate_linear:
           - 0 -> 0
-          - 1 -> 30   
+          - 1 -> 50   
     id: current_channel_A
   - platform: template
     name: power channel a
@@ -492,6 +497,7 @@ sensor:
       - multiply: 235
   - platform: total_daily_energy
     name: energy_channel_a
+    id: energy_channel_a
     power_id: power_channel_a
     unit_of_measurement: kWh
     device_class: energy    
@@ -531,8 +537,9 @@ binary_sensor:
       mode:
         input: true
         pullup: false #already pulled-up on the board
-    name: "Active Oxygen low level in tank"
     id: AOlevel
+    internal: true
+    device_class: problem 
     filters:
       - delayed_on: 30ms
       - delayed_off: 30ms
@@ -544,6 +551,8 @@ binary_sensor:
         pullup: false #already pulled-up on the board
     name: "PH+ low level in tank"
     id: PHPlevel
+    internal: true
+    device_class: battery
     filters:
       - delayed_on: 30ms
       - delayed_off: 30ms
@@ -555,20 +564,21 @@ binary_sensor:
         pullup: false #already pulled-up on the board
     name: "PH- low level in tank"
     id: PHMlevel
+    internal: true
     filters:
       - delayed_on: 30ms
       - delayed_off: 30ms
   - platform: template
-    name: "Main Pump status" # status of the main pump based on the current used by the pump
+    name: "Main Pump status" # status of the main pump based on the power used by the pump
     id: MainPump
     lambda: |-
-      if (id(current_channel_A).state >= 1) {
+      if (id(power_channel_a).state >= minimal_power_used_by_main_pump->value()) {
         return true;
       } else {
         return false;
       }
 
-# text sensor for sending the right value to the web server for level sensors
+
 text_sensor:
   # My custom text sensor
   - platform: template
@@ -595,6 +605,7 @@ text_sensor:
       } else {
         return {"LOW"};
       }
+
 
 #screen saver
 script:
