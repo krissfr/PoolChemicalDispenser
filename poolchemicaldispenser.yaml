@@ -568,6 +568,33 @@ binary_sensor:
         return false;
       }
 
+# text sensor for sending the right value to the web server for level sensors
+text_sensor:
+  # My custom text sensor
+  - platform: template
+    name: Active Oxygen tank level
+    lambda: |-
+      if (id(AOlevel).state) {
+        return {"normal"};
+      } else {
+        return {"LOW"};
+      }
+  - platform: template
+    name: PH+ tank level
+    lambda: |-
+      if (id(PHPlevel).state) {
+        return {"normal"};
+      } else {
+        return {"LOW"};
+      }
+  - platform: template
+    name: PH- tank level
+    lambda: |-
+      if (id(PHMlevel).state) {
+        return {"normal"};
+      } else {
+        return {"LOW"};
+      }
 
 #screen saver
 script:
