@@ -27,11 +27,12 @@ api:
     key: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 ota:
-  password: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  password: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 wifi:
   ssid: !secret wifi_ssid
   password: !secret wifi_password
+  domain: .home
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
@@ -267,11 +268,16 @@ display:
       number: GPIO5
       inverted: true
     id: my_ssd1306
-    update_interval: 2s
+    update_interval: 500ms
     pages:
     - id: start_page
       lambda: |-
         it.print(0, 3, id(my_title), "Pool");
+        if ((id(AOlevel).state == false) || (id(PHPlevel).state == false) || (id(PHMlevel).state == false)) {
+          static bool show = false;
+          if (show) { it.image(55, 0, id(water_alert_outline));};
+          show = !show;
+        };
         it.print(0, 23, id(my_title), "Chemical");
         it.print(0, 43, id(my_title), "Dispenser");
         it.image(80, 10, id(pool_icon));
@@ -533,7 +539,7 @@ binary_sensor:
       - script.execute: splashscreen_timer
   - platform: gpio
     pin:
-      number: GPIO36
+      number: GPIO34
       mode:
         input: true
         pullup: false #already pulled-up on the board
@@ -558,7 +564,7 @@ binary_sensor:
       - delayed_off: 30ms
   - platform: gpio
     pin:
-      number: GPIO34
+      number: GPIO36
       mode:
         input: true
         pullup: false #already pulled-up on the board
@@ -650,3 +656,8 @@ image:
   - file: mdi:pool
     id: pool_icon
     resize: 50x50
+  - file: mdi:barrel-outline    #mdi:water-alert-outline
+    id: water_alert_outline
+    resize: 27x27
+
+
