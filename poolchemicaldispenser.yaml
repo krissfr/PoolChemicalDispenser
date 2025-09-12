@@ -18,8 +18,16 @@ esp32:
     type: arduino
 
 
+external_components:
+  - source:
+      type: git
+      url: https://github.com/robertklep/esphome-custom-component
+    components: [ custom, custom_component ]
+
+
 # Enable logging
 logger:
+  level: WARN
 
 # Enable Home Assistant API
 api:
@@ -70,60 +78,61 @@ globals:
     initial_value: '10'
 
 
+
 # numbers
 number:
   - platform: template
     name: "Active Oxygen quantity (ml)"   # Quantity of Active Oxygen to distribute
     id: number_quantity_oa
     optimistic: true
-    min_value: 1
-    max_value: 10
-    initial_value: 5
-    step: 1
+    min_value: 10
+    max_value: 500
+    initial_value: 80
+    step: 10
     mode: slider
   - platform: template
     id: number_step_oa   # Active Oxygen quantity (ml) for all calibration steps (id(calibration_step))
     optimistic: true
     internal: True
     min_value: 10
-    max_value: 100
-    initial_value: 50
+    max_value: 300
+    initial_value: 210
     step: 1
     mode: slider
   - platform: template
     name: "PH+ quantity (ml)"   # Quantity of PH+ to distribute
     id: number_quantity_php
     optimistic: true
-    min_value: 1
-    max_value: 10
-    initial_value: 5
-    step: 1
+    min_value: 10
+    max_value: 500
+    initial_value: 100
+    step: 10
     mode: slider
   - platform: template
     id: number_step_php   # PH+ quantity (ml) for all calibration steps (id(calibration_step))
     optimistic: true
     internal: True
     min_value: 10
-    max_value: 100
-    initial_value: 50
+    max_value: 300
+    initial_value: 250
     step: 1
     mode: slider
   - platform: template
-    name: "PH- quantity (ml)"   # Quantity of PH+ to distribute
+    name: "PH- quantity (ml)"   # Quantity of PH- to distribute
     id: number_quantity_phm
     optimistic: true
-    min_value: 1
-    max_value: 10
-    initial_value: 5
-    step: 1
+    min_value: 10
+    max_value: 500
+    initial_value: 80
+    step: 10
     mode: slider
   - platform: template
     id: number_step_phm   # PH- quantity (ml) for all calibration steps (id(calibration_step))
     internal: True
     optimistic: true
     min_value: 10
-    max_value: 100
-    initial_value: 50
+    max_value: 300
+    initial_value: 255
     step: 1
     mode: slider
   - platform: template
@@ -154,6 +163,7 @@ switch:
             - display.page.show: warning_page
             - delay: 3500ms
             - display_menu.show: my_graphical_display_menu
+            - script.execute: splashscreen_timer
           else:
             - logger.log:
                 format: "Setting Active Oxygen stepper position to %f"
@@ -183,6 +193,7 @@ switch:
             - display.page.show: warning_page
             - delay: 3500ms
             - display_menu.show: my_graphical_display_menu
+            - script.execute: splashscreen_timer
           else:
             - logger.log:
                 format: "Setting PH+ stepper position to %f"
@@ -212,6 +223,7 @@ switch:
             - display.page.show: warning_page
             - delay: 3500ms
             - display_menu.show: my_graphical_display_menu
+            - script.execute: splashscreen_timer
           else:
             - logger.log:
                 format: "Setting PH- stepper position to %f"
@@ -253,7 +265,7 @@ spi_device:
     cs_pin: GPIO17
     spi_id: spi_bus0
     data_rate: 10MHz
-    mode: 3
+    spi_mode: 3
     bit_order: msb_first
 
 # Screen: SSD1309, SPI version
@@ -423,10 +435,10 @@ graphical_display_menu:
       items:
         - type: label
           text: !lambda |-
-            return (to_string("${name}")).c_str();
+            return "${name}";
         - type: label
           text: !lambda |-
-            return ("version: " + to_string("${version}")).c_str();
+            return ("version: ${version}");
         - type: label
           text: !lambda |-
             return ("IP: " + WiFi.localIP().toString()).c_str();
@@ -655,8 +667,12 @@ image:
   - file: mdi:pool
     id: pool_icon
     resize: 50x50
+    type: grayscale
   - file: mdi:barrel-outline    #mdi:water-alert-outline
     id: water_alert_outline
     resize: 27x27
+    type: grayscale
+
+
 
 
