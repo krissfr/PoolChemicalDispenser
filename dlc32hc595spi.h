@@ -18,7 +18,7 @@ class DLC32HC595 : public Component {
   int ydirregidx = 6;        // my_register index to control direction for Y
   // idx 7 not used
 
-  byte my_register = B01010100;         // Variable to hold the pattern of which Pins are currently turned on or off
+  byte my_register = 0b01010100;         // Variable to hold the pattern of which Pins are currently turned on or off
 
 
   void setup() override {
