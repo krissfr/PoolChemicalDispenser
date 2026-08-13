@@ -19,3 +19,12 @@ For this projet, you need :
 For a unkown reason, i have to add a small diode (i use 1n4148) to lower a bit the 5v input voltage of the SSD1309 oled display.
 
 => Put all microswitch under drivers on "ON"
+
+
+Inside the waterproof box :
+![alt text](https://github.com/krissfr/PoolChemicalDispenser/blob/main/box_open.jpg)
+
+Box cloed and powered :
+
+![alt text](https://github.com/krissfr/PoolChemicalDispenser/blob/main/box_closed.jpg)
+
