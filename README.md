@@ -24,7 +24,7 @@ For a unkown reason, i have to add a small diode (i use 1n4148) to lower a bit t
 Inside the waterproof box :
 ![alt text](https://github.com/krissfr/PoolChemicalDispenser/blob/main/box_open.jpg)
 
-Box cloed and powered :
+Box closed and powered :
 
 ![alt text](https://github.com/krissfr/PoolChemicalDispenser/blob/main/box_closed.jpg)
 
